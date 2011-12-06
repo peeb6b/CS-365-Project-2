@@ -1,4 +1,4 @@
-Client.java
+//Client.java
 
 /* ------------------
    Client
@@ -12,6 +12,7 @@ import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.Timer;
+import java.net.SocketException;
 
 public class Client{
 
@@ -117,7 +118,6 @@ public class Client{
     Client theClient = new Client();
     
     //get server RTSP port and IP address from the command line
-    //------------------
     int RTSP_server_port = Integer.parseInt(argv[1]);
     String ServerHost = argv[0];
     InetAddress ServerIPAddr = InetAddress.getByName(ServerHost);
@@ -125,10 +125,9 @@ public class Client{
     //get video filename to request:
     VideoFileName = argv[2];
 
-    //Establish a TCP connection with the server to exchange RTSP messages
-    //------------------
+    //Establish a TCP connection with the server to exchange RTSP message
     theClient.RTSPsocket = new Socket(ServerIPAddr, RTSP_server_port);
-
+    System.out.println("Create Socket !");
     //Set input and output stream filters:
     RTSPBufferedReader = new BufferedReader(new InputStreamReader(theClient.RTSPsocket.getInputStream()) );
     RTSPBufferedWriter = new BufferedWriter(new OutputStreamWriter(theClient.RTSPsocket.getOutputStream()) );
@@ -142,29 +141,25 @@ public class Client{
   //Handler for buttons
   //------------------------------------
 
-  //.............
-  //TO COMPLETE
-  //.............
-
   //Handler for Setup button
   //-----------------------
   class setupButtonListener implements ActionListener{
     public void actionPerformed(ActionEvent e){
 
-      //System.out.println("Setup Button pressed !");      
+      System.out.println("Setup Button pressed !");      
 
       if (state == INIT) 
-	{
-	  //Init non-blocking RTPsocket that will be used to receive data
-	  try{
-	    //construct a new DatagramSocket to receive RTP packets from the server, on port RTP_RCV_PORT
-	    //RTPsocket = ...
+      {
+        //Init non-blocking RTPsocket that will be used to receive data
+        System.out.println("INIT state");
+      try
+      {
+        //construct a new DatagramSocket to receive RTP packets from the server, on port RTP_RCV_PORT
+        RTPsocket = new DatagramSocket(RTP_RCV_PORT);
+        //set TimeOut value of the socket to 5msec.
+        RTPsocket.setSoTimeout(5);
 
-	    //set TimeOut value of the socket to 5msec.
-	    //....
-
-	  }
-	  catch (SocketException se)
+	  }catch(SocketException se)
 	    {
 	      System.out.println("Socket exception: "+se);
 	      System.exit(0);
@@ -182,8 +177,8 @@ public class Client{
 	  else 
 	    {
 	      //change RTSP state and print new state 
-	      //state = ....
-	      //System.out.println("New RTSP state: ....");
+	      state = READY;
+	      System.out.println("New RTSP state: READY");
 	    }
 	}//else if state != INIT then do nothing
     }
@@ -194,13 +189,12 @@ public class Client{
   class playButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent e){
 
-      //System.out.println("Play Button pressed !"); 
+      System.out.println("Play Button pressed !"); 
 
-      if (state == READY) 
+  if (state == READY) 
 	{
 	  //increase RTSP sequence number
-	  //.....
-
+	  RTSPSeqNb++;
 
 	  //Send PLAY message to the server
 	  send_RTSP_request("PLAY");
@@ -209,14 +203,13 @@ public class Client{
 	  if (parse_server_response() != 200)
 		  System.out.println("Invalid Server Response");
 	  else 
-	    {
-	      //change RTSP state and print out new state
-	      //.....
-	      // System.out.println("New RTSP state: ...")
-
+    {
+        //change RTSP state and print out new state
+	      state = PLAYING;
+	      System.out.println("New RTSP state: PLAYING");
 	      //start the timer
 	      timer.start();
-	    }
+	  }
 	}//else if state != READY then do nothing
     }
   }
@@ -227,12 +220,12 @@ public class Client{
   class pauseButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent e){
 
-      //System.out.println("Pause Button pressed !");   
+      System.out.println("Pause Button pressed !");   
 
       if (state == PLAYING) 
 	{
 	  //increase RTSP sequence number
-	  //........
+	  RTSPSeqNb++;
 
 	  //Send PAUSE message to the server
 	  send_RTSP_request("PAUSE");
@@ -243,8 +236,8 @@ public class Client{
 	  else 
 	    {
 	      //change RTSP state and print out new state
-	      //........
-	      //System.out.println("New RTSP state: ...");
+	      state = READY;
+	      System.out.println("New RTSP state: READY");
 	      
 	      //stop the timer
 	      timer.stop();
@@ -259,12 +252,12 @@ public class Client{
   class tearButtonListener implements ActionListener {
     public void actionPerformed(ActionEvent e){
 
-      //System.out.println("Teardown Button pressed !");  
+      System.out.println("Teardown Button pressed !");  
 
-      //increase RTSP sequence number
-      // ..........
+
+      //increase RTSP sequence number      
+      RTSPSeqNb++;
       
-
       //Send TEARDOWN message to the server
       send_RTSP_request("TEARDOWN");
 
@@ -274,8 +267,8 @@ public class Client{
       else 
 	{     
 	  //change RTSP state and print out new state
-	  //........
-	  //System.out.println("New RTSP state: ...");
+	  state = INIT;
+	  System.out.println("New RTSP state: INIT");
 
 	  //stop the timer
 	  timer.stop();
@@ -294,8 +287,9 @@ public class Client{
   class timerListener implements ActionListener {
     public void actionPerformed(ActionEvent e) {
       
-      //Construct a DatagramPacket to receive data from the UDP socket
+      //Construct a DatagramPacket to receive data from the UDP socket      
       rcvdp = new DatagramPacket(buf, buf.length);
+	
 
       try{
 	//receive the DP from the socket:
@@ -324,7 +318,7 @@ public class Client{
 	iconLabel.setIcon(icon);
       }
       catch (InterruptedIOException iioe){
-	//System.out.println("Nothing to read");
+	System.out.println("Nothing to read");
       }
       catch (IOException ioe) {
 	System.out.println("Exception caught: "+ioe);
@@ -342,7 +336,7 @@ public class Client{
     try{
       //parse status line and extract the reply_code:
       String StatusLine = RTSPBufferedReader.readLine();
-      //System.out.println("RTSP Client - Received from Server:");
+      System.out.println("RTSP Client - Received from Server:");
       System.out.println(StatusLine);
     
       StringTokenizer tokens = new StringTokenizer(StatusLine);
@@ -358,10 +352,12 @@ public class Client{
 	  String SessionLine = RTSPBufferedReader.readLine();
 	  System.out.println(SessionLine);
 	
-	  //if state == INIT gets the Session Id from the SessionLine
-	  tokens = new StringTokenizer(SessionLine);
-	  tokens.nextToken(); //skip over the Session:
-	  RTSPid = Integer.parseInt(tokens.nextToken());
+	  if (state == INIT)
+    {
+      tokens = new StringTokenizer(SessionLine);
+      tokens.nextToken(); //skip over the Session:
+      RTSPid = Integer.parseInt(tokens.nextToken());
+    }
 	}
     }
     catch(Exception ex)
@@ -377,26 +373,29 @@ public class Client{
   //Send RTSP Request
   //------------------------------------
 
-  //.............
-  //TO COMPLETE
-  //.............
-  
   private void send_RTSP_request(String request_type)
   {
-    try{
+    try
+    {
       //Use the RTSPBufferedWriter to write to the RTSP socket
-
       //write the request line:
-      //RTSPBufferedWriter.write(...);
+      RTSPBufferedWriter.write(request_type+" "+VideoFileName+" "+"RTSP/1.0"+CRLF);
 
       //write the CSeq line: 
-      //......
-
-      //check if request_type is equal to "SETUP" and in this case write the Transport: line advertising to the server the port used to receive the RTP packets RTP_RCV_PORT
-      //if ....
-      //otherwise, write the Session line from the RTSPid field
-      //else ....
-
+      RTSPBufferedWriter.write("Cseq: "+RTSPSeqNb+CRLF);
+      
+      //check if request_type is equal to "SETUP" and in this case 
+      if(request_type == "SETUP")
+      {
+        //write the Transport: line advertising to the server 
+        //the port used to receive the RTP packets RTP_RCV_PORT
+        RTSPBufferedWriter.write("TRANSPORT: RTP/UDP; client_port= "+RTP_RCV_PORT+CRLF);
+      }
+      else
+      {
+        //otherwise, write the Session line from the RTSPid field
+        RTSPBufferedWriter.write("Session: "+RTSPid+CRLF);
+      }
       RTSPBufferedWriter.flush();
     }
     catch(Exception ex)
